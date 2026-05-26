@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RetroVault — Tu Sala de Juegos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg:       #080b0f;
+      --surface:  #0d1117;
+      --card:     #111820;
+      --border:   #1e2d3d;
+      --accent:   #00ffc8;
+      --accent2:  #ff4f6d;
+      --amber:    #ffc851;
+      --text:     #c9d6e3;
+      --muted:    #4a6070;
+      --glow:     0 0 18px rgba(0,255,200,.35);
+      --glow-r:   0 0 18px rgba(255,79,109,.35);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Scanline overlay ── */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,.13) 2px,
+        rgba(0,0,0,.13) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.2rem 2.5rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(8,11,15,.85);
+      backdrop-filter: blur(10px);
+      position: sticky; top: 0; z-index: 100;
+    }
+
+    .logo {
+      font-family: 'Press Start 2P', monospace;
+      font-size: .85rem;
+      color: var(--accent);
+      text-shadow: var(--glow);
+      letter-spacing: .05em;
+    }
+
+    .logo span { color: var(--accent2); }
+
+    nav { display: flex; gap: 1.5rem; }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: .72rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      transition: color .2s;
+    }
+    nav a:hover { color: var(--accent); }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      padding: 4rem 2rem 2.5rem;
+      position: relative;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% 0%, rgba(0,255,200,.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero h1 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(1rem, 3vw, 1.8rem);
+      color: #fff;
+      line-height: 1.7;
+      text-shadow: 0 0 40px rgba(0,255,200,.4);
+      margin-bottom: 1rem;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: .8rem;
+      max-width: 500px;
+      margin: 0 auto 2rem;
+      line-height: 1.8;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: .3rem .85rem;
+      border: 1px solid var(--accent);
+      border-radius: 99px;
+      font-size: .62rem;
+      color: var(--accent);
+      letter-spacing: .12em;
+      margin: 0 .3rem .6rem;
+      text-transform: uppercase;
+    }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      display: flex;
+      gap: .6rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 0 2rem 2.5rem;
+    }
+
+    .filter-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: .7rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: .45rem 1.1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .filter-btn:hover,
+    .filter-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: var(--glow);
+    }
+
+    /* ── Grid ── */
+    .grid-section { padding: 0 2.5rem 4rem; max-width: 1400px; margin: 0 auto; }
+
+    .section-label {
+      font-size: .65rem;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: .8rem;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1.2rem;
+    }
+
+    .game-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform .25s, border-color .25s, box-shadow .25s;
+      position: relative;
+    }
+
+    .game-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+      box-shadow: var(--glow);
+    }
+
+    .game-card .cover {
+      width: 100%;
+      aspect-ratio: 3/4;
+      object-fit: cover;
+      display: block;
+      background: var(--surface);
+    }
+
+    .cover-placeholder {
+      width: 100%;
+      aspect-ratio: 3/4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0d1117 0%, #111820 100%);
+      font-family: 'Press Start 2P', monospace;
+      font-size: .55rem;
+      color: var(--muted);
+      gap: .8rem;
+      text-align: center;
+      padding: 1rem;
+    }
+    .cover-placeholder .icon { font-size: 2.5rem; }
+
+    .console-badge {
+      position: absolute;
+      top: .6rem; right: .6rem;
+      background: rgba(8,11,15,.85);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .2rem .5rem;
+      font-size: .55rem;
+      color: var(--amber);
+      letter-spacing: .08em;
+    }
+
+    .game-info {
+      padding: .85rem 1rem;
+    }
+
+    .game-info h3 {
+      font-size: .7rem;
+      color: #fff;
+      margin-bottom: .35rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .game-info p {
+      font-size: .6rem;
+      color: var(--muted);
+      line-height: 1.6;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .play-btn {
+      display: block;
+      width: calc(100% - 2rem);
+      margin: 0 1rem .85rem;
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-family: 'Press Start 2P', monospace;
+      font-size: .5rem;
+      padding: .65rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all .2s;
+      letter-spacing: .08em;
+    }
+    .play-btn:hover {
+      background: var(--accent);
+      color: #000;
+      box-shadow: var(--glow);
+    }
+
+    /* ── Player Modal ── */
+    .player-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(5,7,10,.96);
+      z-index: 200;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-y: auto;
+      padding: 2rem 1rem;
+    }
+
+    .player-overlay.active { display: flex; }
+
+    .player-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 1.2rem;
+    }
+
+    .player-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: .75rem;
+      color: var(--accent);
+      text-shadow: var(--glow);
+    }
+
+    .close-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: .7rem;
+      padding: .5rem 1.2rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all .2s;
+      letter-spacing: .08em;
+    }
+    .close-btn:hover {
+      border-color: var(--accent2);
+      color: var(--accent2);
+      box-shadow: var(--glow-r);
+    }
+
+    #emulator-wrapper {
+      width: 100%;
+      max-width: 900px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #000;
+      min-height: 500px;
+    }
+
+    #game { width: 100%; }
+
+    .player-meta {
+      width: 100%; max-width: 900px;
+      margin-top: 1.2rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .meta-chip {
+      font-size: .62rem;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: .3rem .8rem;
+      border-radius: 99px;
+      letter-spacing: .1em;
+    }
+
+    .controls-tip {
+      width: 100%; max-width: 900px;
+      margin-top: 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: .5rem .8rem;
+    }
+    .key-row {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .6rem;
+      color: var(--muted);
+    }
+    .key {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .15rem .45rem;
+      color: var(--text);
+      font-size: .58rem;
+      white-space: nowrap;
+    }
+
+    /* ── Loading state ── */
+    .loading-msg {
+      font-family: 'Press Start 2P', monospace;
+      font-size: .65rem;
+      color: var(--accent);
+      text-align: center;
+      padding: 4rem 1rem;
+      text-shadow: var(--glow);
+      animation: blink 1.2s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem 2.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    footer p { font-size: .62rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+  </style>
+</head>
+<body>
+
+<!-- ─── HEADER ─── -->
+<header>
+  <div class="logo">Retro<span>Vault</span></div>
+  <nav>
+    <a href="#">Biblioteca</a>
+    <a href="#">Consolas</a>
+    <a href="#">Acerca</a>
+  </nav>
+</header>
+
+<!-- ─── HERO ─── -->
+<section class="hero">
+  <h1>Tu Sala de Juegos Retro</h1>
+  <p>Juega clásicos directamente en tu navegador. Sin descargas, sin anuncios, sin distracciones.</p>
+  <span class="pill">NDS</span>
+  <span class="pill">GBA</span>
+  <span class="pill">SNES</span>
+  <span class="pill">N64</span>
+</section>
+
+<!-- ─── FILTER BAR ─── -->
+<div class="filter-bar">
+  <button class="filter-btn active" onclick="filterGames('all', this)">Todos</button>
+  <button class="filter-btn" onclick="filterGames('nds', this)">Nintendo DS</button>
+  <button class="filter-btn" onclick="filterGames('gba', this)">Game Boy Advance</button>
+  <button class="filter-btn" onclick="filterGames('snes', this)">SNES</button>
+  <button class="filter-btn" onclick="filterGames('n64', this)">N64</button>
+</div>
+
+<!-- ─── GAME GRID ─── -->
+<main class="grid-section">
+  <p class="section-label">Biblioteca de juegos</p>
+  <div class="games-grid" id="games-grid"></div>
+</main>
+
+<!-- ─── PLAYER MODAL ─── -->
+<div class="player-overlay" id="player-overlay">
+  <div class="player-header">
+    <div class="player-title" id="player-title">Cargando...</div>
+    <button class="close-btn" onclick="closePlayer()">✕ Cerrar</button>
+  </div>
+
+  <div id="emulator-wrapper">
+    <div class="loading-msg" id="loading-msg">INICIANDO EMULADOR...</div>
+    <div id="game"></div>
+  </div>
+
+  <div class="player-meta" id="player-meta"></div>
+
+  <div class="controls-tip">
+    <div class="key-row"><span class="key">↑ ↓ ← →</span> D-Pad</div>
+    <div class="key-row"><span class="key">Z</span> Botón A</div>
+    <div class="key-row"><span class="key">X</span> Botón B</div>
+    <div class="key-row"><span class="key">A</span> Botón X</div>
+    <div class="key-row"><span class="key">S</span> Botón Y</div>
+    <div class="key-row"><span class="key">Q</span> Botón L</div>
+    <div class="key-row"><span class="key">W</span> Botón R</div>
+    <div class="key-row"><span class="key">Enter</span> Start</div>
+    <div class="key-row"><span class="key">Shift</span> Select</div>
+    <div class="key-row"><span class="key">F1</span> Guardar estado</div>
+    <div class="key-row"><span class="key">F3</span> Cargar estado</div>
+    <div class="key-row"><span class="key">F10</span> Pantalla completa</div>
+  </div>
+</div>
+
+<footer>
+  <p>RetroVault — Uso personal y privado.</p>
+  <p>Emulación via <a href="https://emulatorjs.org" target="_blank" style="color:var(--accent)">EmulatorJS</a></p>
+</footer>
+
+<!-- ─────────────────────────────────────────
+     CONFIGURACIÓN DE JUEGOS
+     Edita este array para agregar tus juegos.
+     
+     Campos:
+       title    — Nombre del juego
+       console  — Etiqueta visible (NDS, GBA, etc.)
+       core     — Core EmulatorJS: nds, gba, snes, n64, gb, gbc
+       romUrl   — URL directa al archivo ROM (raw link)
+       cover    — URL a imagen de portada (opcional)
+       year     — Año de lanzamiento
+       desc     — Descripción corta
+──────────────────────────────────────────── -->
+<script>
+const GAMES = [
+  {
+    id: 1,
+    title: "Pokémon Platinum",
+    console: "NDS",
+    core: "nds",
+    romUrl: "TU_URL_DEL_ROM_AQUI.nds",       // ← Reemplaza con tu URL
+    cover: "",
+    year: 2008,
+    desc: "Aventura épica por la región Sinnoh con Giratina y el Mundo Distorsión."
+  },
+  {
+    id: 2,
+    title: "Pokémon FireRed",
+    console: "GBA",
+    core: "gba",
+    romUrl: "TU_URL_DEL_ROM_AQUI.gba",       // ← Reemplaza con tu URL
+    cover: "",
+    year: 2004,
+    desc: "Remake mejorado de Pokémon Rojo con Islas Sevii y 386 Pokémon."
+  },
+  {
+    id: 3,
+    title: "Super Mario World",
+    console: "SNES",
+    core: "snes",
+    romUrl: "TU_URL_DEL_ROM_AQUI.smc",
+    cover: "",
+    year: 1990,
+    desc: "El clásico plataformero de Mario con Yoshi y la isla Dinosaurio."
+  },
+  // ── Agrega más juegos aquí ──
+];
+
+// ─── Emojis por consola ───
+const CONSOLE_ICON = {
+  nds: "🎮", gba: "🕹️", snes: "🎰", n64: "🎯", gb: "📟", gbc: "💚", default: "🎮"
+};
+
+const CORE_LABEL = {
+  nds: "Nintendo DS", gba: "Game Boy Advance", snes: "Super Nintendo",
+  n64: "Nintendo 64", gb: "Game Boy", gbc: "Game Boy Color"
+};
+
+// ─── Render de tarjetas ───
+function renderGames(list) {
+  const grid = document.getElementById("games-grid");
+  grid.innerHTML = list.map(g => `
+    <div class="game-card" data-core="${g.core}" onclick="openPlayer(${g.id})">
+      <div class="console-badge">${g.console}</div>
+      ${g.cover
+        ? `<img class="cover" src="${g.cover}" alt="${g.title}" loading="lazy">`
+        : `<div class="cover-placeholder"><span class="icon">${CONSOLE_ICON[g.core] || CONSOLE_ICON.default}</span>${g.title}</div>`
+      }
+      <div class="game-info">
+        <h3>${g.title}</h3>
+        <p>${g.desc}</p>
+      </div>
+      <button class="play-btn">▶ JUGAR</button>
+    </div>
+  `).join("");
+}
+
+// ─── Filtro ───
+function filterGames(type, btn) {
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  const list = type === "all" ? GAMES : GAMES.filter(g => g.core === type);
+  renderGames(list);
+}
+
+// ─── Abrir emulador ───
+let ejs_instance = null;
+
+function openPlayer(id) {
+  const game = GAMES.find(g => g.id === id);
+  if (!game) return;
+
+  document.getElementById("player-title").textContent = game.title;
+  document.getElementById("player-overlay").classList.add("active");
+  document.body.style.overflow = "hidden";
+
+  document.getElementById("player-meta").innerHTML = `
+    <span class="meta-chip">${CORE_LABEL[game.core] || game.core}</span>
+    <span class="meta-chip">${game.year || "—"}</span>
+    <span class="meta-chip">${game.console}</span>
+  `;
+
+  // Limpiar instancia anterior
+  const wrapper = document.getElementById("emulator-wrapper");
+  wrapper.innerHTML = `<div class="loading-msg" id="loading-msg">INICIANDO EMULADOR...</div><div id="game"></div>`;
+
+  // Cargar EmulatorJS dinámicamente
+  window.EJS_player = "#game";
+  window.EJS_core = game.core;
+  window.EJS_gameUrl = game.romUrl;
+  window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
+  window.EJS_startOnLoaded = true;
+  window.EJS_language = "es";
+
+  // Quitar loader anterior si existe
+  const oldScript = document.getElementById("ejs-loader");
+  if (oldScript) oldScript.remove();
+
+  const script = document.createElement("script");
+  script.id = "ejs-loader";
+  script.src = "https://cdn.emulatorjs.org/stable/data/loader.js";
+  script.onload = () => {
+    const msg = document.getElementById("loading-msg");
+    if (msg) msg.style.display = "none";
+  };
+  document.body.appendChild(script);
+}
+
+// ─── Cerrar emulador ───
+function closePlayer() {
+  document.getElementById("player-overlay").classList.remove("active");
+  document.body.style.overflow = "";
+  const wrapper = document.getElementById("emulator-wrapper");
+  wrapper.innerHTML = `<div class="loading-msg">INICIANDO EMULADOR...</div><div id="game"></div>`;
+  const oldScript = document.getElementById("ejs-loader");
+  if (oldScript) oldScript.remove();
+}
+
+// Cerrar con ESC
+document.addEventListener("keydown", e => { if (e.key === "Escape") closePlayer(); });
+
+// ─── Init ───
+renderGames(GAMES);
+</script>
+</body>
+</html>
+```
